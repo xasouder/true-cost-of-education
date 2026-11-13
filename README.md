@@ -1,7 +1,6 @@
 Data was collected from IPEDS202324 from NCES.
 
 **Sources:**
-
 https://nces.ed.gov/ipeds/use-the-data/download-access-database  
 
 Hanson, Melanie. “Student Loan Debt Statistics” EducationData.org, 2026-07-16, https://educationdata.org/student-loan-debt-statistics

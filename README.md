@@ -1,6 +1,6 @@
 Data was collected from IPEDS202324 from NCES.
 
-`**Sources:**`
+**Sources:**
 
 https://nces.ed.gov/ipeds/use-the-data/download-access-database  
 

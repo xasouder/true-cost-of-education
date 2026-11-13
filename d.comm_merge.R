@@ -232,7 +232,8 @@ df2<- final2 |>
     SBASDEG,
     SMASDEG,
     SDOCDEG,
-    EFYTOTLT #university popTotal
+    EFYTOTLT, #university popTotal
+    STABBR,
   )
 glimpse(df2) #6,163 X 209
 #write_csv(df2, "dcomm_merged.csv")

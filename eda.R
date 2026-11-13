@@ -30,7 +30,7 @@ summary(eda_df$EFYTOTLT, na.rm= TRUE)
 df<- eda_df|>filter(CYACTIVE == 1 & PSEFLAG == 1, !is.na(SASCDEG), 
                     !is.na(SBASDEG),!is.na(SMASDEG), !is.na(SDOCDEG))|>
   select( 
-    INSTNM, SASCDEG, SBASDEG, SMASDEG, SDOCDEG,
+    INSTNM, STABBR, SASCDEG, SBASDEG, SMASDEG, SDOCDEG,
     CHG2AY2,CHG2AY3,CHG3AY2, CHG3AY3, CHG4AY2,
     CHG4AY3, CHG5AY2, CHG5AY3, CHG6AY2, CHG6AY3,
     CHG7AY2, CHG7AY3, CHG8AY2, CHG8AY3, CHG9AY2, CHG9AY3, CYACTIVE, EFYTOTLT
@@ -42,12 +42,12 @@ df2<- eda_df|>filter(CYACTIVE == 1 & PSEFLAG == 1, !is.na(SASCDEG),
                      !is.na(SBASDEG),!is.na(SMASDEG), !is.na(SDOCDEG))|>
   select( 
     SASCDEG, SBASDEG, SMASDEG, SDOCDEG,CHG2AY2, CHG3AY2,
-    CHG4AY2, CHG5AY2, CHG6AY2, CHG7AY2, CHG8AY2, CHG9AY2, EFYTOTLT, INSTNM
+    CHG4AY2, CHG5AY2, CHG6AY2, CHG7AY2, CHG8AY2, CHG9AY2, EFYTOTLT, INSTNM, STABBR
   )
 names(df2)<-c("Associates", "Bachelors", "Masters", "Doctoral",
               "In-State Tuition", "Out-of-State Tutition", "Supply Costs",
               "On-Campus Housing", "On-Campus Expenses", "Off-Campus Housing",
-              "Off-Campus Expenses", "Family Expenses", "Student Count","Institution")
+              "Off-Campus Expenses", "Family Expenses", "Student Count","Institution", "State")
 summary(df2,na.rm= TRUE)
 ###basic univariate analysis###
 #even with cleaning procedures using IQR the data is not normally distrbuted
@@ -142,6 +142,7 @@ title(main = "Correlation Plot",
       adj = 0.5)
 
 # ggduo plots
+library(GGally)
 dv_plots <- map(1:4, function(dv_col) {
   # Extract the name of the current DV for the title
   dv_name <- names(df2)[dv_col] 
@@ -161,6 +162,6 @@ dv_plots[[1]]
 dv_plots[[2]]
 dv_plots[[3]]
 dv_plots[[4]]
-
+dv_plots
 #write.csv(df2, "modeldf.csv")
 #write_xlsx(df2,"modeldf.xlsx")

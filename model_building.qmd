@@ -15,6 +15,7 @@ library(rpart)
 library(rpart.plot)
 library(caret)
 library(readxl)
+library(writexl)
 library(tidyverse)
 setwd("C:\\Users\\star-\\Data Science\\R stuff\\D.comm")
 
@@ -26,18 +27,25 @@ summary(modeldf$Bachelors)
 summary(modeldf$Masters)
 summary(modeldf$Doctoral)
 
+#modeldf<-df2
 df<-modeldf|>
   mutate(
     Associates_Percent = (Associates/`Student Count`)*100,
     Bachelors_Percent = (Bachelors/`Student Count`)*100,
     Masters_Percent = (Masters/`Student Count`)*100,
     Doctoral_Percent = (Doctoral/`Student Count`)*100
-  )
+  )|>filter(Masters_Percent<80)
 summary(df$Associates)
+summary(df$Bachelors)
+summary(df$Masters)
+summary(df$Doctoral)
 summary(df$Associates_Percent)
 summary(df$Bachelors_Percent)
 summary(df$Masters_Percent)
 summary(df$Doctoral_Percent)
+
+#write_xlsx(df,"visualdf.xlsx")
+
 ```
 
 Analysis of Newly Created Variables
@@ -69,24 +77,239 @@ df2|>ggplot(aes(x=Doctoral))+geom_histogram(binwidth =400)
 
 Educational Attainment Statistics \[2026\]: Levels by Demographic
 
-Visuals for Poster
+## Assumption Checking
+
+### QQplots
+
+```{r QQplots}
+#table(df2)
+par(mfrow = c(2, 2))
+qqnorm(df2$Associates_Percent,main="Figure 3: QQ plot of Associates degrees",pch=19,
+       cex.main=1.2)
+#Add a line where x = y to help assess how closely the scatter fits the line.
+qqline(df2$Associates_Percent)
+
+qqnorm(df2$Bachelors_Percent,main="Figure 4: QQ plot of Bachelors degrees",pch=19,
+       cex.main=1.2)
+#Add a line where x = y to help assess how closely the scatter fits the line.
+qqline(df2$Bachelors_Percent)
+
+qqnorm(df2$Masters_Percent,main="Figure 5: QQ plot of Masters degrees",pch=19,
+       cex.main=1.2)
+#Add a line where x = y to help assess how closely the scatter fits the line.
+qqline(df2$Masters_Percent)
+
+qqnorm(df2$Doctoral_Percent,main="Figure 6: QQ plot of Doctoral degrees",pch=19,
+       cex.main=1.2)
+#Add a line where x = y to help assess how closely the scatter fits the line.
+qqline(df2$Doctoral_Percent)
+
+#reset back to one by one graphic
+par(mfrow = c(1, 1))
+```
+
+### Normality Functions
+
+#### Associates
+
+```{r Associates Normality Tests}
+library("nortest")
+# 4normality tests
+shapiro.test(df$Associates_Percent)
+
+sum(duplicated(df$Associates_Percent)) #there are 1567 ties in the data
+
+nortest::ad.test(df$Associates_Percent)
+
+nortest::cvm.test(df$Associates_Percent)
+```
+
+#### Bachelors
+
+```{r Bachelor normality}
+#############################
+##########BACHELORS##########
+#############################
+shapiro.test(df$Bachelors_Percent)
+
+sum(duplicated(df$Bachelors_Percent)) #there are 437 ties in the data
+
+nortest::ad.test(df$Bachelors_Percent)
+
+nortest::cvm.test(df$Bachelors_Percent)
+```
+
+#### Masters
+
+```{r Masters Normality}
+#############################
+###########MASTERS###########
+#############################
+shapiro.test(df$Masters_Percent)
+
+sum(duplicated(df$Masters_Percent)) #there are 862 ties in the data
+
+nortest::ad.test(df$Masters_Percent)
+
+nortest::cvm.test(df$Masters_Percent)
+
+```
+
+#### Doctoral
+
+```{r Doctoral Normality}
+#############################
+##########Doctoral###########
+#############################
+shapiro.test(df$Doctoral_Percent)
+
+sum(duplicated(df$Doctoral_Percent)) #there are 1632 ties in the data
+
+nortest::ad.test(df$Doctoral_Percent)
+
+nortest::cvm.test(df$Doctoral_Percent)
+
+```
+
+By central limit theorem we can assume normality
+
+## Two-sample T-test
+
+### In vs Out of State Tuition
+
+```{r In/Out state tuition}
+
+t<-t.test(df$`In-State Tuition`,df$`Out-of-State Tutition`,data=df, alternative ="two.sided",
+          mu = 0, var.equal = TRUE, conf.level = .95)
+t #the full results
+t$p.value #gets the pvalue
+t$conf.int # gets the confidence interval
+
+t<-t.test(df$`In-State Tuition`,df$`Out-of-State Tutition`,data=df, alternative ="two.sided",
+          mu = 0, var.equal = FALSE, conf.level = .95)
+t #the full results
+t$p.value #gets the pvalue
+t$conf.int # gets the confidence interval
+```
+
+```{r Nonpara Tuition}
+wil<-wilcox.test(df$`In-State Tuition`,df$`Out-of-State Tutition`,exact=FALSE,alternative="two.sided", conf.int = TRUE, conf.level=.95)
+
+wil
+round(wil$p.value*100,3)
+```
+
+### On vs Off Campus Housing
+
+```{r "On/off Campus Housing"}
+t<-t.test(df$`On-Campus Housing`,df$`Off-Campus Housing`,data=df, alternative ="two.sided",           mu = 0, var.equal = TRUE, conf.level = .95) 
+t #the full results 
+t$p.value #gets the pvalue 
+t$conf.int # gets the confidence interval 
+
+t<-t.test(df$`On-Campus Housing`,df$`Off-Campus Housing`,data=df, alternative ="two.sided",           mu = 0, var.equal = FALSE, conf.level = .95) 
+t #the full results 
+t$p.value #gets the pvalue 
+t$conf.int # gets the confidence interval  
+
+
+wil<-wilcox.test(df$`On-Campus Housing`,df$`Off-Campus Housing`,exact=FALSE,alternative="two.sided", conf.int = TRUE, conf.level=.95)
+
+wil
+round(wil$p.value*100,3)
+
+summary(df$`On-Campus Housing`)
+summary(df$`Off-Campus Housing`)
+```
+
+### On vs Off Campus vs Family Expenses
+
+```{r On/off/family expenses}
+df_long <- df %>%
+  select(`Family Expenses`, `On-Campus Expenses`, `Off-Campus Expenses`) %>%
+  pivot_longer(
+    cols = everything(), 
+    names_to = "housing_type",
+    values_to = "score"
+  ) %>%
+  drop_na(score) %>%
+  mutate(housing_type = as.factor(housing_type))
+
+Ratio_of_MaxToMin_SD <- function(quant,categ){
+  temp<-tapply(quant,categ,FUN=sd)
+  ratio<-round(max(temp)/min(temp),2)
+  #return(temp)
+  print("The standard deviations of the quantitative variable for the different categorical levels are:")
+  print(temp)
+  print(paste("The ratio of the largest standard deviation to the smallest standard deviation is:", ratio))
+}
+
+# Call Statement for the Function to check if the ratio of the largest standard deviation to the smalles standard deviation is less than 2, the rule of thumb for being able to pool.
+Ratio_of_MaxToMin_SD(df_long$score,df_long$housing_type)
+#glimpse(df_long)
+print("The average expenses for on-campus students:")
+print(paste(round(mean(df_long$score[df_long$housing_type=="On-Campus Expenses"]),2), sep = ""))
+
+print("The average expenses for off-campus students:")
+print(paste(round(mean(df_long$score[df_long$housing_type=="Off-Campus Expenses"]),2), sep = ""))
+
+print("The average expenses for students living at home:")
+print(paste(round(mean(df_long$score[df_long$housing_type=="Family Expenses"]),2), sep = ""))
+# Run a standard Between-Subjects One-Way ANOVA
+anova_model <- aov(score ~ housing_type, data = df_long)
+krusk_model<- kruskal.test(score ~ housing_type, data = df_long) 
+
+# View the summary
+summary(anova_model)
+krusk_model
+
+TukeyHSD(anova_model)
+pairwise.t.test(df_long$score, df_long$housing_type, p.adj  = "bonferroni") 
+
+#nonpara post hoc
+pairwise_result <- pairwise.wilcox.test(df_long$score, df_long$housing_type, p.adjust.method = "bonferroni")
+print(pairwise_result)
+```
 
 ```{r}
-library(corrplot)
-#df2<-df2|>select(-Associates, -Bachelors, -Masters, -Doctoral)
-cor_matrix <- cor(df2, use = "complete.obs")
-# Plot a visual heatmap of the correlations
-corrplot(cor_matrix,method = "shade" ,
-         #order= "AOE",
-         #method = "circle", 
-         #type = "lower", 
-         #addCoef.col = "black",# Overlay the actual correlation numbers
-         #tl.col = "black",
-         #mar = c(0, 0, 1, 0),
-         number.cex = .7)#reduces number size
-title(main = "Correlation Plot", 
-      line = -7,    # Higher numbers move it further up
-      adj = 0.5)
+df %>%
+  select(`Family Expenses`, `On-Campus Expenses`, `Off-Campus Expenses`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value, fill = variable)) +
+  geom_histogram(bins = 25, color = "white", alpha = 0.8) +
+  facet_wrap(~ variable, scales = "free") +
+  labs(
+    title = "Distribution of Expense Types",
+    x = "Amount",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+What we learned: out of state tuition is more expensive then in-state tuition, there is no difference in housing costs for student on or off campus; however, students on-campus have less expenses then both off-campus students and students living at home.
+
+## Linear Models
+
+```{r Linear Models}
+linear.model <- lm(Associates_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
+                     `Off-Campus Expenses`+ `Family Expenses`
+                   , data=df)
+summary(linear.model)
+
+linear.model2 <- lm(Bachelors_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
+                     `Off-Campus Expenses`+ `Family Expenses`
+                   , data=df)
+summary(linear.model2)
+
+linear.model3 <- lm(Masters_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
+                     `Off-Campus Expenses`+ `Family Expenses`
+                   , data=df)
+summary(linear.model3)
+linear.model4 <- lm(Doctoral ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
+                     `Off-Campus Expenses`+ `Family Expenses`
+                   , data=df)
+summary(linear.model4)
 ```
 
 ## Model 1 and 2: Tree and KNN
@@ -118,6 +341,10 @@ calc_rmse = function(actual, predicted) {
 ```
 
 ```{r Tree Associates}
+library(rpart)
+library(randomforest)
+library(rpart.plot)
+library(caret)
 tree <- rpart(Associates_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
                 `Off-Campus Expenses`+ `Family Expenses`, data=df_est, control=rpart.control(cp=.0001))
 printcp(tree)
@@ -209,7 +436,7 @@ head(df_trn, n = 10)
 
 ```{r Bachelors Tree}
 tree <- rpart(Bachelors_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
-                `Off-Campus Expenses`+ `Family Expenses`, data=df_est, control=rpart.control(cp=.0001))
+                `Off-Campus Expenses`+ `Family Expenses`, data=df_est, control=rpart.control(cp=.0100))
 printcp(tree)
 
 rpart.plot(tree)
@@ -253,6 +480,7 @@ any(is.na(x))
 # Fit the KNN regression model
 df_knn_15 <- knnreg(x = x, y = y,data=df_est, k = 15)
 knn_mod_list = list(
+  df_knn_2 <- knnreg(x = x, y = y,data=df_est, k = 2),
   df_knn_5 <- knnreg(x = x, y = y,data=df_est, k = 5),
   df_knn_10 <- knnreg(x = x, y = y,data=df_est, k = 10),
   df_knn_15<-df_knn_15,
@@ -278,7 +506,7 @@ sapply(knn_val_pred, calc_rmse, df_val$Bachelors_Percent)
 ### Masters
 
 ```{r Masters Splits}
-df_filter<-df|>filter(Masters_Percent>0)|> select(Masters_Percent,`In-State Tuition`, `Out-of-State Tutition`, `Supply Costs`, `On-Campus Housing`, `On-Campus Expenses`, `Off-Campus Housing`, `Off-Campus Expenses`, `Family Expenses`)|>drop_na()
+df_filter<-df|>filter(Masters_Percent>0 & Masters_Percent<90)|> select(Masters_Percent,`In-State Tuition`, `Out-of-State Tutition`, `Supply Costs`, `On-Campus Housing`, `On-Campus Expenses`, `Off-Campus Housing`, `Off-Campus Expenses`, `Family Expenses`)|>drop_na()
 
 # test-train split
 set.seed(394)
@@ -388,9 +616,9 @@ df_val = df_trn[-df_est_idx, ]
 head(df_trn, n = 10)
 ```
 
-```{r}
+```{r Doctoral Tree}
 tree <- rpart(Doctoral_Percent ~`In-State Tuition`+ `Out-of-State Tutition`+ `Supply Costs`+`On-Campus Housing`+ `On-Campus Expenses`+ `Off-Campus Housing`+
-                `Off-Campus Expenses`+ `Family Expenses`, data=df_est, control=rpart.control(cp=.0001))
+                `Off-Campus Expenses`+ `Family Expenses`, data=df_est, control=rpart.control(cp=.0100))
 printcp(tree)
 
 rpart.plot(tree)
@@ -456,4 +684,116 @@ calc_rmse = function(actual, predicted) {
 sapply(knn_val_pred, calc_rmse, df_val$Doctoral_Percent)
 ```
 
-## Further Model Building
+# Further Model Building
+
+## Clusters
+
+```{r Fuzzy Clustering}
+#install.packages("e1071")
+#install.packages("factoextra")
+
+library(e1071)
+library(factoextra)
+glimpse(df)
+datas<-df|> select(!Associates:Doctoral & !Institution)
+data<-na.omit(datas)
+glimpse(data)
+```
+
+```{r cluster creation}
+#cluster creation with 4 clusters
+set.seed(934)
+n_cluster <- 4
+m <- 2
+result <- cmeans(data, centers = n_cluster, m = m)
+
+fuzzy_membership_matrix <- result$membership
+clusters <- as.factor(result$cluster)
+
+initial_centers <- result$centers
+final_centers <- t(result$centers)
+```
+
+```{r cluster visual}
+#Method 1 visualization
+fviz_cluster(list(data = data, cluster = clusters),
+             geom = "point",
+             ellipse.type = "convex",
+             main = "Fuzzy C-Means Clustering on mtcars Dataset")
+#method 2 heads
+cluster_membership <- as.data.frame(result$membership)
+data_with_clusters <- cbind(data, cluster_membership)
+head(data_with_clusters)
+
+```
+
+### Cluster quality
+
+```{r gapstat}
+library(cluster)
+
+gap_stat <- clusGap(data, FUN = kmeans, nstart = 25,
+                    K.max = 10, B = 50)
+
+print(gap_stat)
+
+fviz_gap_stat(gap_stat)
+```
+
+### **Davies-Bouldin Index**
+
+```{r Davies-Bouldin Index}
+#install.packages("clusterSim")
+library(clusterSim)
+
+set.seed(123)
+km_res <- kmeans(data, centers = 5, nstart = 25)
+
+db_index <- index.DB(data, km_res$cluster, centrotypes = "centroids")
+
+print(db_index$DB)
+```
+
+### **Calinski-Harabasz Index**
+
+```{r  Davies-Bouldin Index}
+ch_index <- index.G1(data, km_res$cluster)
+
+print(ch_index)
+```
+
+Visualizing clusters
+
+```{r}
+data$Cluster <- apply(result$membership, 1, which.max)
+
+ggplot(data, aes(x = Bachelors_Percent, y = `In-State Tuition`, color = as.factor(Cluster))) +
+  geom_point(size = 2) +
+  labs(title = "Fuzzy C-means Clustering", x = "Percent of Bachelors Conferred", y = "In-State Tuition ($)")
+```
+
+```{r}
+pairs(data, pch = 5, col = as.numeric(result$cluster),cex.labels = .5)
+```
+
+## Random Forrest
+
+```{r rf1}
+library(randomForest)
+datas<-df|> select(!Associates:Doctoral & !Institution & !`Student Count`)
+sum(!complete.cases(datas))
+glimpse(datas)
+datas<-as.data.frame(datas)
+
+#replace NAs with column medians
+#datas[] <- lapply(datas, function(x) {
+ # if(is.numeric(x)) {
+  #  x[is.na(x)] <- median(x, na.rm = TRUE)}  return(x) })
+
+for(i in 1:ncol(datas)) {
+  datas[ , i][is.na(datas[ , i])] <- median(datas[ , i], na.rm=TRUE)
+}
+#glimpse(datas)
+```
+
+### Forest Model Building

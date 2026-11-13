@@ -1,0 +1,483 @@
+---
+title: "Visualization for d.comm"
+format: docx
+editor: visual
+---
+
+# Visualizations
+
+```{r Setup}
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(readxl)
+library(writexl)
+library(tidyverse)
+library(patchwork)
+
+setwd("C:\\Users\\star-\\Data Science\\R stuff\\D.comm")
+df<-read_xlsx("visualdf.xlsx")
+#glimpse(df)
+
+datas<- df|> 
+  select(
+  !Associates:Doctoral & !`Student Count`:State
+  )|>filter(Masters_Percent<90)
+glimpse(datas)
+```
+
+## Univariate Analysis
+
+```{r Tables Top 5 Institutions}
+
+df %>%
+  slice_max(order_by = Associates_Percent, n = 5) %>%
+  select(Institution, Associates_Percent)
+
+df %>%
+  slice_max(order_by = Associates, n = 5) %>%
+  select(Institution, Associates)
+df %>%
+  slice_max(order_by = Bachelors_Percent, n = 5) %>%
+  select(Institution, Bachelors_Percent)
+df %>%
+  slice_max(order_by = Bachelors, n = 5) %>%
+  select(Institution, Bachelors)
+df %>%
+  slice_max(order_by = Masters_Percent, n = 5) %>%
+  select(Institution, Masters_Percent)
+df %>%
+  slice_max(order_by = Masters, n = 5) %>%
+  select(Institution, Masters)
+df %>%
+  slice_max(order_by = Doctoral_Percent, n = 5) %>%
+  select(Institution, Doctoral_Percent)
+df %>%
+  slice_max(order_by = Doctoral, n = 5) %>%
+  select(Institution, Doctoral)
+```
+
+### Barchart
+
+```{r}
+#barchart
+```
+
+### Scatter Plot
+
+```{r}
+#yeah no
+#pairs(~,data=datas)
+plot(datas)
+
+```
+
+### State Map
+
+```{r State Analysis}
+#install.packages("usmap")
+library(dplyr)
+library(ggplot2)
+library("usmap")
+library(usmapdata)
+library(usmap)
+library(sf)
+
+state_counts <- df %>%
+  group_by(State) %>%
+  summarise(n = n()) %>%  
+  rename(state = State, val = n)
+```
+
+```{r}
+state_labels <- usmapdata::centroid_labels("states")
+
+state_labels <- state_labels %>%
+  mutate(
+    x = st_coordinates(geom)[, 1],
+    y = st_coordinates(geom)[, 2]
+  )
+
+map_data_labeled <- merge(state_counts, state_labels, by.x = "state", by.y = "abbr")
+
+
+plot_usmap(data = state_counts, values = "val", color = "white") +
+  scale_fill_gradientn(
+    colors = c("darkred", "gold", "darkgreen"),
+    name = "University Count",
+    label = scales::comma
+  )+
+  geom_text(
+    data = map_data_labeled, 
+    aes(x = x, y = y, label = val), 
+    color = "white", 
+    size = 3, 
+    fontface = "bold"
+  ) +
+  labs(
+    title = "Figure 1: Number of Universities by State",
+  ) +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12)
+  )
+```
+
+## Bivariate Analysis
+
+### Degree Boxplot
+
+```{r Degree  boxplot}
+
+datas %>%
+  select(Associates_Percent,Bachelors_Percent, Masters_Percent, Doctoral_Percent)%>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  mutate(variable = factor(variable, levels = c(
+    "Associates_Percent", 
+    "Bachelors_Percent", 
+    "Masters_Percent", 
+    "Doctoral_Percent"
+  ),labels = c(
+    "Associates Degree", 
+    "Bachelor Degree", 
+    "Masters Degree", 
+    "Doctoral Degree"
+  ))) %>%
+  #creates the initial boxplots
+  ggplot(aes(
+    x = variable,
+    y=value, fill = variable)) +
+  geom_boxplot(alpha = 0.7, width = .5) +#ylim(0,55)+
+  scale_fill_manual(
+    values = colorRampPalette(c("darkgreen", "gold", "maroon"))(4)
+  ) +
+  labs(
+    title = "Figure 2: Boxplot for Different Degree Types",
+    x = "Degree Type",
+    y = "Percent of Student's"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(face = "bold")#, axis.text.x = element_text(angle = 10, hjust = 1, face = "bold", size = 10)
+  )
+```
+
+```{r}
+df %>%
+  select(Associates,Bachelors, Masters, Doctoral)%>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  mutate(variable = factor(variable, levels = c(
+    "Associates", 
+    "Bachelors", 
+    "Masters", 
+    "Doctoral"
+  ),labels = c(
+    "Associates Degree", 
+    "Bachelor Degree", 
+    "Masters Degree", 
+    "Doctoral Degree"
+  ))) %>%
+  #creates the initial boxplots
+  ggplot(aes(
+    x = variable,
+    y=value, fill = variable)) +
+  geom_boxplot(alpha = 0.7, width = .5) +#ylim(0,55)+
+  scale_fill_manual(
+    values = colorRampPalette(c("darkgreen", "gold", "maroon"))(4)
+  ) +
+  labs(
+    #title = "Distribution of Expense Types with 5-Number Summary",
+    x = "Degree Type",
+    y = "Percent of Student's"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(face = "bold")#, axis.text.x = element_text(angle = 10, hjust = 1, face = "bold", size = 10)
+  )
+```
+
+### Dependent Variable boxplot
+
+```{r Housing BoxPlot}
+df %>%
+  select(`On-Campus Housing`, `Off-Campus Housing`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  mutate(variable = fct_reorder(variable, value, .fun = median, .desc = TRUE)) %>%
+  ggplot(aes(
+    x = variable,
+    y=value, fill = variable)) +
+  geom_boxplot(alpha = 0.7, width=0.5) +
+  scale_fill_manual(
+    values = colorRampPalette(c("darkgreen", "gold", "maroon"))(2)
+  ) +
+  
+  # Adds text labels for the 5-number summary (Min, Q1, Median, Q3, Max)
+  stat_summary(
+    fun = function(y) {
+      r <- quantile(y, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+      names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+      return(r)
+    },
+    geom = "text",
+    aes(label = round(after_stat(y), 1) ),color = "maroon4",
+    position = position_nudge(x = 0.35),
+    size = 4,
+    fontface = "bold"
+  ) +
+  labs(
+    title = "Distribution of Expense Types with 5-Number Summary",
+    x = "Expense Category",
+    y = "Amount ($)"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(face = "bold")#,axis.text.x = element_text(angle = 0, hjust = 1, face = "bold", size = 10)
+  )
+```
+
+```{r Expenses ggplotboxplot}
+df %>%
+  select(`On-Campus Expenses`,`Off-Campus Expenses`, `Family Expenses`, `Supply Costs`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  mutate(variable = fct_reorder(variable, value, .fun = median, .desc = TRUE)) %>%
+  #creates the initial boxplots
+  ggplot(aes(
+    x = variable,
+    y=value, fill = variable)) +
+geom_boxplot(alpha = 0.7, width = .5) +#ylim(0,10000)+
+  scale_fill_manual(
+    values = colorRampPalette(c("darkgreen", "gold", "maroon"))(4)
+  ) +
+  labs(
+    title = "Distribution of Expense Types with 5-Number Summary",
+    x = "Expense Category",
+    y = "Amount ($)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(face = "bold")#, axis.text.x = element_text(angle = 10, hjust = 1, face = "bold", size = 10)
+  ) 
+```
+
+```{r}
+df %>%
+  select(`In-State Tuition`,`Out-of-State Tutition`,
+         `On-Campus Housing`, `Off-Campus Housing`, `On-Campus Expenses`,
+         `Off-Campus Expenses`, `Family Expenses`, `Supply Costs`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value, fill = variable)) +
+  geom_boxplot()+
+  #geom_histogram(bins = 25, color = "white", alpha = 0.8) +
+  facet_wrap(~ variable, scales = "free") + # scales = "free" allows different axes if ranges differ
+  labs(
+    title = "Distribution of Expense Types",
+    x = "Amount",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r Tuition Variables Boxplot}
+#creates the initial boxplots
+df_p<-df %>%select(`In-State Tuition`,`Out-of-State Tutition`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+b<-boxplot(df_p$value~df_p$variable,
+           names=c("Large Countries","Small Countries"), 
+           main="Figure 10: Boxplot of value per capita by Country Size (n = 222)", 
+           boxwex=0.2, 
+           xlab="Population Size", 
+           ylab="value per capita",
+           cex.lab=1.5,
+           col = c("darkgreen","gold"),
+           cex.main=1.5,
+           cex.axis=1.5)
+b
+names(b)
+b$stats
+#creates a subset of the for large and small populations
+largePop<-subset(df_p,subset=df_p$variable=="Out-of-State Tutition")
+smallPop<-subset(df_p,subset=df_p$variable=="In-State Tuition")
+
+#gets the mean of these populations
+points(1,mean(largePop$value),pch=7)
+points(2,mean(smallPop$value),pch=7)
+
+# Calculate the stats once
+b_stats <- boxplot.stats(largePop$value)$stats
+
+# Plot the text, rounding the labels
+stat.names <- c("Min:", "Q1:", "Median:", "Q3:", "Max:")
+loc<-c(.65,1.35,.65,1.35,.65)
+text(
+  y = b_stats, 
+  labels = paste(stat.names,round(b_stats, 2)), 
+  x = loc, col = "maroon4",
+  cex = .8, 
+)
+
+text(y = round(mean(largePop$value),2), 
+     labels = paste("Mean:",round(mean(largePop$value),2)),
+     x = .65,col = "maroon4",
+     cex = .8)
+text(y = round(max(largePop$value),2), 
+     labels = paste("Largest Observation:", round(max(largePop$value),2)), 
+     x =  1.35, col = "maroon4",
+     cex  =.8)
+#
+# Calculate the stats once
+b_stats2 <- boxplot.stats(smallPop$value)$stats
+
+# Plot the text, rounding the labels
+stat.names <- c("Min:", "Q1:", "Median:", "Q3:", "Max:")
+loc<-c(1.75,2.25,1.75,2.25,1.75)
+text(
+  y = b_stats2, 
+  labels = paste(stat.names,round(b_stats2, 2)), 
+  x = loc, 
+  cex = .8, 
+  col = "maroon"
+)
+text(y = round(mean(smallPop$value),2), 
+     labels = paste("Mean:",round(mean(smallPop$value),2)), 
+     x = 1.75,
+     col = "maroon",
+     cex = .8)
+text(y = round(max(smallPop$value),2), 
+     labels = paste("Largest Observation:",round(max(smallPop$value),2)), 
+     x = 2.25,
+     col = "maroon",
+     cex = .8)
+```
+
+```{r Tuition GGPLOT Boxplot}
+df_p <- df %>%
+  select(`In-State Tuition`, `Out-of-State Tutition`) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+#summary statistics
+stats_summary <- df_p %>%
+  group_by(variable) %>%
+  summarise(
+    min_val      = boxplot.stats(value)$stats[1],
+    q1_val       = boxplot.stats(value)$stats[2],
+    median_val   = boxplot.stats(value)$stats[3],
+    q3_val       = boxplot.stats(value)$stats[4],
+    max_val      = boxplot.stats(value)$stats[5],
+    mean_val     = mean(value, na.rm = TRUE),
+    absolute_max = max(value, na.rm = TRUE)
+  )
+var1 <- stats_summary$variable[1]
+var2 <- stats_summary$variable[2]
+
+#annotation data frames
+ann_1 <- data.frame(
+  variable = var1,
+  x = c(0.65, 1.35, 0.65, 1.35, 0.65, 0.65, 1.35),
+  y = c(
+    stats_summary$min_val[1], stats_summary$q1_val[1],
+    stats_summary$median_val[1], stats_summary$q3_val[1],
+    stats_summary$max_val[1], stats_summary$mean_val[1],
+    stats_summary$absolute_max[1]
+  ),
+  label = c(
+    paste("Min:", round(stats_summary$min_val[1], 2)),
+    paste("Q1:", round(stats_summary$q1_val[1], 2)),
+    paste("Median:", round(stats_summary$median_val[1], 2)),
+    paste("Q3:", round(stats_summary$q3_val[1], 2)),
+    paste("Max:", round(stats_summary$max_val[1], 2)),
+    paste("Mean:", round(stats_summary$mean_val[1], 2)),
+    paste("Largest Observation:", round(stats_summary$absolute_max[1], 2))
+  ),
+  col = "maroon"
+)
+
+ann_2 <- data.frame(
+  variable = var2,
+  x = c(1.75, 2.25, 1.75, 2.25, 1.75, 1.75, 2.25),
+  y = c(
+    stats_summary$min_val[2], stats_summary$q1_val[2],
+    stats_summary$median_val[2], stats_summary$q3_val[2],
+    stats_summary$max_val[2], stats_summary$mean_val[2],
+    stats_summary$absolute_max[2]
+  ),
+  label = c(
+    paste("Min:", round(stats_summary$min_val[2], 2)),
+    paste("Q1:", round(stats_summary$q1_val[2], 2)),
+    paste("Median:", round(stats_summary$median_val[2], 2)),
+    paste("Q3:", round(stats_summary$q3_val[2], 2)),
+    paste("Max:", round(stats_summary$max_val[2], 2)),
+    paste("Mean:", round(stats_summary$mean_val[2], 2)),
+    paste("Largest Observation:", round(stats_summary$absolute_max[2], 2))
+  ),
+  col = "maroon4"
+)
+
+annotations_df <- bind_rows(ann_1, ann_2)
+
+#boxplot
+ggplot(df_p, aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot(width = 0.2, outlier.shape = NA) + 
+  scale_fill_manual(values = setNames(c("darkgreen", "gold"), c(var1, var2))) +
+  
+  # mean shape = 7 -
+  stat_summary(fun = mean, geom = "point", shape = 7, size = 3, color = "black") + 
+  
+  #text annotation custom colors
+  geom_text(data = annotations_df, aes(x = x, y = y, label = label, color = col), 
+            inherit.aes = FALSE, size = 3) +
+  scale_color_identity() + 
+  
+  # lab and title
+  labs(
+    title = "Figure 10: Boxplot of Tuition per capita (n = 222)",
+    x = "Tuition Type",
+    y = "value per capita"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 15, face = "bold"),
+    axis.title = element_text(size = 15),
+    axis.text = element_text(size = 15),
+    legend.position = "none"
+  )
+```
+
+## Correlational Analysis
+
+```{r Correlation Matrix}
+#try to have the upper have has a scatter plots
+library(corrplot)
+# Calculate the correlation matrix
+cor_matrix <- cor(datas, use = "complete.obs")
+# Plot a visual heatmap of the correlations
+
+corrplot(cor_matrix, 
+         method = "color",
+         col =  colorRampPalette(c("maroon", "gold","green4"))(100), 
+         # Smooth diverging palette
+         type = "lower",  
+         addCoef.col = "black", # Overlay the actual correlation numbers
+         tl.col = "black",
+         tl.cex = .8, #label scaling
+         tl.srt = 360, #slant the labels
+         number.cex = .5,#reduces number size
+         mar = c(0, 0, 1.5, 0),
+         #title = "Figure 2: Correlation Plot"
+)
+```
+
+## Model Visuals
+
+manually complete the tree plots in powerpoint overlay shapes
+
+tried to do the knn but the tree was better
